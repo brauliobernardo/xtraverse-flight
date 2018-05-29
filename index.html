@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="author" content="Braulio Bernardo">
+    <meta name="description" content="A basic JavaScript endless runner">
+    <title>Xtraverse Flight</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Xtraverse Flight">
+    <link rel="apple-touch-icon" href="img/xtraverse-flight-icon-logo.png">
+    <meta name="theme-color" content="#0AD1FA">
+    <link rel="icon" type="image/png" href="img/xtraverse-flight-icon-logo.png" />
+    <script src="https://aframe.io/releases/0.8.0/aframe.min.js"></script>
+    <script src="js/aframe-physics-system.min.js"></script>
+    <script src="js/aframe-gamepad-controls.js"></script>
+    <script src='js/zones.js'></script>
+    <script src='js/components.js'></script>
+
+    <style>
+        body { background: #333 }
+        .invisible { display: none }
+        #loading-section {
+            text-align: center;
+            margin: 2rem auto;
+            font-family: Courier, sans-serif;
+            font-size: 1.5rem;
+            color: #eee;
+        }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            margin: 100px auto;
+        }
+        .double-bounce1, .double-bounce2 {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: rgb(10, 209, 250);
+            opacity: 0.6;
+            position: absolute;
+            top: 0;
+            left: 0;
+            -webkit-animation: sk-bounce 2.0s infinite ease-in-out;
+            animation: sk-bounce 2.0s infinite ease-in-out;
+        }
+        .double-bounce2 {
+            -webkit-animation-delay: -1.0s;
+            animation-delay: -1.0s;
+        }
+        @-webkit-keyframes sk-bounce {
+            0%, 100% { -webkit-transform: scale(0.0) }
+            50% { -webkit-transform: scale(1.0) }
+        }
+        @keyframes sk-bounce {
+            0%, 100% {
+                transform: scale(0.0);
+                -webkit-transform: scale(0.0);
+            } 50% {
+                  transform: scale(1.0);
+                  -webkit-transform: scale(1.0);
+              }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- This loading section shows up before the scene is loaded -->
+    <div id='loading-section'>
+        <div class="spinner">
+            <div class="double-bounce1"></div>
+            <div class="double-bounce2"></div>
+        </div>
+        <div id='tutorial'>
+            <p style='font-style: italic'>NOTE: A fast graphics card is recommended to play the game</p>
+            <p>Use the arrow (or WASD) keys to dodge obstacles.</p>
+            <p>Gamepads are supported.</p>
+            <p>Press <code>spacebar</code> (keyboard) or <code>start</code> (gamepad) to pause.</p>
+            <p>Thank you for trying this out.</p>
+            <blockquote>-- Braulio Bernardo</blockquote>
+        </div>
+    </div>
+    <!-- loading section ends here -->
+
+    <!-- Scene starts here -->
+    <a-scene fog="type: linear; color: #333; near: 0; far: 40"
+             physics-world="gravity: 0 0 0" physics="friction: 0.1; restitution: 0.5; gravity: 0" stats>
+        <!-- Game assets (fetched before rendering) -->
+        <a-assets>
+            <a-asset-item id="vehicleobj" src="models/rocket.obj"></a-asset-item>
+            <a-asset-item id="vehiclemtl" src="models/rocket.mtl"></a-asset-item>
+            <img id="alien-face" src="assets/alien_face.png">
+            <img id="alien-floor" src="assets/floor.png">
+        </a-assets>
+
+        <!-- Empty container used for listening to events from "non-arrow" gamepad buttons -->
+        <a-entity id='emptyContainer' gamepad-controls="controller: 0; lookEnabled: false; flyEnabled: true; movementEnabled:false"></a-entity>
+
+        <!-- Main container -->
+        <a-entity id='container' gamepad-controls="controller: 0; lookEnabled: false; flyEnabled: true; movementEnabled:false">
+
+            <a-sky id='sky' color="#333" radius="10000"></a-sky>
+
+            <!-- Floor -->
+            <a-plane src="#alien-floor" height="30000" width="14" rotation="-90 0 0"></a-plane>
+            <!-- Wall -->
+            <a-plane src="#alien-floor" repeat='4' height="30000" width="30" rotation="0 90 -90" position='-15 0 -4'></a-plane>
+            <!-- Wall -->
+            <a-plane src="#alien-floor" repeat='4' height="30000" width="30" rotation="0 -90 90" position='15 0 -4'></a-plane>
+
+            <!-- Vehicle -->
+            <a-entity id='vehicle' position='0 1 -3' obj-model="obj: #vehicleobj; mtl: #vehiclemtl" scale="0.01 0.01 0.01" static-body>
+                <a-animation attribute="rotation"
+                             to="0 0 16"
+                             repeat="indefinite" dur='1500' direction='alternate'>
+
+                </a-animation>
+            </a-entity>
+
+            <!-- Camera 1 -->
+            <a-camera id='camera' position="0 1 0" look-controls="enabled: false" cursor-visible="enabled: false" wasd-controls="enabled: false; acceleration: 600; fly: true" active="false">
+                <!-- Status bar -->
+                <a-entity
+                        id='status'
+                        position='-2.5 2.44 -3'
+                        geometry="primitive: plane; width: 4; height: auto"
+                        material="color: #366; opacity: 0.7"
+                        text='align: center'
+                        visible='false'>
+                </a-entity>
+                <!-- High/Current Score UI -->
+                <a-entity
+                        id='score'
+                        position='2.8 2.1 -3'
+                        geometry="primitive: circle; width: 4; height: 1"
+                        material="color: #333; opacity: 0.7"
+                        zOffset='1000'
+                        text='align: center; value: 0'>
+                    <!-- This animation is triggered when the player beats her high score -->
+                    <a-animation
+                            attribute="position"
+                            to="2 1.5 -3"
+                            begin='scored'
+                            repeat="5" dur='100' direction='alternate'>
+                    </a-animation>
+                </a-entity>
+
+            </a-camera>
+
+            <!-- Camera 2 -->
+            <a-entity position="16 -5 -18.2" rotation="19.1 45.5 20">
+                <a-camera>
+                </a-camera>
+                <a-animation attribute="position" to="0 1 0" dur="5000"></a-animation>
+                <a-animation attribute="rotation" to="0 0 0" dur="5000"></a-animation>
+            </a-entity>
+
+        </a-entity>
+        <!-- Main container ends here -->
+    </a-scene>
+    <!-- Scene ends here -->
+
+    <script>
+        var highScore = localStorage.getItem('xtraverseFlightScore');
+        var scoreTextValue = `Highest score: ${highScore}\n`;
+        var scene = document.querySelector('a-scene');
+        var camera = document.querySelector('a-camera');
+        var scoreText = document.querySelector('#score');
+
+        /**
+         * Global vars used by other scripts
+         */
+        var vehicle = document.querySelector('#vehicle');
+        var isPaused = true;
+        var statusText = document.querySelector('#status');
+        var container = document.querySelector('#container');
+        var emptyContainer = document.querySelector('#emptyContainer');
+
+        /**
+         * Enables the main camera after 6 seconds
+         */
+        setTimeout(() => {
+            document.querySelector('#camera').setAttribute('camera', 'active', true);
+        }, 6000);
+
+        scoreText.setAttribute('text', 'value', scoreTextValue);
+
+        /**
+         * Hides the loading section once the scene
+         * is loaded
+         */
+        scene.addEventListener('loaded', () => {
+            document.querySelector('#loading-section').classList.add('invisible');
+        });
+    </script>
+    <script src='js/text.js'></script>
+    <script src='js/collision.js'></script>
+    <script src='js/controls.js'></script>
+</body>
+
+</html> 

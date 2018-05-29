@@ -1,0 +1,14 @@
+{
+  "short_name": "Xtraverse Flight",
+  "name": "Xtraverse Flight",
+  "icons": [
+    {
+      "src": "img/xtraverse-flight-icon-logo.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ],
+  "display": "standalone",
+  "background_color": "#333333",
+  "theme_color": "#0AD1FA"
+}
